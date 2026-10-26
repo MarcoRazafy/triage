@@ -1,0 +1,338 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Triage des produits</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="wrap">
+    <header class="topbar">
+      <a class="brand" href="#accueil">
+        <div class="logo" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M6 12h12M10 18h4"/></svg>
+        </div>
+        <div>
+          <h1>Triage des produits</h1>
+          <p>Classement des ventes par catégorie et remplissage du modèle mensuel.</p>
+        </div>
+      </a>
+      <ul class="legend" aria-label="Catégories suivies">
+        <li><span class="dot fromage"></span>Fromage LS</li>
+        <li><span class="dot corps"></span>CORPS GRAS</li>
+        <li><span class="dot lait"></span>LAIT</li>
+        <li><span class="dot creme"></span>CREME</li>
+      </ul>
+    </header>
+
+    <div class="alert error" id="support" hidden>
+      Ce navigateur est trop ancien pour lire les fichiers Excel. Utilisez une version récente de Chrome, Edge, Firefox ou Safari.
+    </div>
+
+    <nav class="crumbs" id="crumbs" hidden>
+      <a href="#accueil" class="back">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
+        Accueil
+      </a>
+      <span class="crumb-title" id="crumb-title"></span>
+    </nav>
+
+    <!-- Accueil -->
+    <section id="view-home" class="home">
+      <h2 class="home-title">Que voulez-vous faire ?</h2>
+      <div class="choices">
+        <a class="choice" href="#trier">
+          <span class="choice-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M6 12h12M10 18h4"/></svg>
+          </span>
+          <span class="choice-step">Étape 1</span>
+          <span class="choice-title">Trier</span>
+          <span class="choice-text">Ajouter la colonne « produit » à un fichier brut, en comparant ses EAN aux référentiels.</span>
+        </a>
+        <a class="choice" href="#modele">
+          <span class="choice-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M9 9v11M15 9v11"/></svg>
+          </span>
+          <span class="choice-step">Étape 2</span>
+          <span class="choice-title">Remplir le modèle</span>
+          <span class="choice-text">Ranger un fichier trié dans le modèle de l'enseigne, un onglet par mois.</span>
+        </a>
+      </div>
+      <p class="home-hint muted">Ordre habituel : trier le fichier brut, puis remplir le modèle avec le fichier trié.</p>
+    </section>
+
+    <!-- Trier -->
+    <main id="view-trier" hidden>
+      <!-- Étape 1 : référentiels -->
+      <section class="card" aria-labelledby="t-ref">
+        <div class="card-head">
+          <span class="step">1</span>
+          <div>
+            <h2 id="t-ref">Référentiels</h2>
+            <p>Un ou plusieurs fichiers : fromage, lait, corps gras, crème. La catégorie est lue dans la colonne segmentation_0.</p>
+          </div>
+        </div>
+        <label class="drop" id="drop-ref" tabindex="0">
+          <input type="file" id="in-ref" accept=".xlsx,.xlsm" multiple hidden>
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></svg>
+          <span><strong>Glisser les référentiels ici</strong> ou cliquer pour les choisir</span>
+        </label>
+        <ul class="ref-list" id="ref-list"></ul>
+        <div class="alert warn" id="ref-notice" hidden></div>
+      </section>
+
+      <!-- Étape 2 : fichier brut -->
+      <section class="card" aria-labelledby="t-raw">
+        <div class="card-head">
+          <span class="step">2</span>
+          <div>
+            <h2 id="t-raw">Fichier brut</h2>
+            <p>Le fichier de ventes de l'enseigne à classer. Il n'est jamais modifié : le résultat est un nouveau fichier.</p>
+          </div>
+        </div>
+        <label class="drop" id="drop-raw" tabindex="0">
+          <input type="file" id="in-raw" accept=".xlsx,.xlsm" hidden>
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></svg>
+          <span class="drop-text"><strong>Glisser le fichier brut ici</strong> ou cliquer pour le choisir</span>
+        </label>
+        <div class="alert error" id="raw-error" hidden></div>
+
+        <div id="raw-panel" hidden>
+          <div class="file-line">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8z"/><path d="M14 3v5h5M9 13h6M9 17h6"/></svg>
+            <div>
+              <div class="file-name" id="raw-name"></div>
+              <div class="muted" id="raw-meta"></div>
+            </div>
+          </div>
+
+          <div class="grid">
+            <div class="field" id="f-sheet-wrap" hidden>
+              <label for="f-sheet">Feuille</label>
+              <select id="f-sheet"></select>
+            </div>
+            <div class="field">
+              <label for="f-header">Ligne d'en-tête</label>
+              <input type="number" id="f-header" min="1" max="60" step="1">
+            </div>
+            <div class="field">
+              <label for="f-ean">Colonne EAN</label>
+              <select id="f-ean"></select>
+            </div>
+            <div class="field">
+              <label for="f-label">Colonne libellé <span class="hint">pour l'aperçu</span></label>
+              <select id="f-label"></select>
+            </div>
+            <div class="field">
+              <label for="f-out">Nom de la nouvelle colonne</label>
+              <input type="text" id="f-out" value="produit" spellcheck="false">
+            </div>
+            <div class="field">
+              <label for="f-nf">Si l'EAN n'est pas trouvé</label>
+              <input type="text" id="f-nf" placeholder="laisser la cellule vide" spellcheck="false">
+            </div>
+          </div>
+
+          <div class="subhead">Aperçu des premières lignes</div>
+          <div class="table-wrap short"><table class="grid-preview" id="head-preview"></table></div>
+        </div>
+      </section>
+
+      <!-- Étape 3 : triage -->
+      <section class="card" aria-labelledby="t-run">
+        <div class="card-head">
+          <span class="step">3</span>
+          <div>
+            <h2 id="t-run">Triage</h2>
+            <p>Chaque ligne reçoit la catégorie de son EAN. Le fichier trié garde toute la mise en forme d'origine.</p>
+          </div>
+        </div>
+        <div class="actions">
+          <button type="button" class="btn primary" id="btn-run" disabled>Lancer le triage</button>
+          <span class="muted" id="run-hint"></span>
+        </div>
+        <div class="progress" id="progress" hidden>
+          <div class="bar"><span></span></div>
+          <div class="label muted"></div>
+        </div>
+        <div class="alert error" id="run-error" hidden></div>
+
+        <div id="result" hidden>
+          <p class="summary" id="summary"></p>
+          <div class="kpis" id="kpis" role="group" aria-label="Filtrer l'aperçu"></div>
+          <div class="actions">
+            <button type="button" class="btn primary" id="btn-dl">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v12M7 11l5 5 5-5M4 20h16"/></svg>
+              Télécharger le fichier trié
+            </button>
+            <button type="button" class="btn" id="btn-to-modele">Remplir le modèle avec ce fichier</button>
+            <span class="muted" id="dl-name"></span>
+          </div>
+          <div class="table-wrap"><table class="list" id="preview">
+            <thead><tr><th class="num">Ligne</th><th>EAN</th><th>Libellé</th><th>Produit</th></tr></thead>
+            <tbody></tbody>
+          </table></div>
+          <p class="muted small" id="preview-note"></p>
+        </div>
+      </section>
+    </main>
+
+    <!-- Remplir le modèle -->
+    <main id="view-modele" hidden>
+      <section class="card" aria-labelledby="m-t-src">
+        <div class="card-head">
+          <span class="step">1</span>
+          <div>
+            <h2 id="m-t-src">Fichier trié</h2>
+            <p>Le résultat de « Trier », avec sa colonne produit.</p>
+          </div>
+        </div>
+        <label class="drop" id="m-drop-src" tabindex="0">
+          <input type="file" id="m-in-src" accept=".xlsx,.xlsm" hidden>
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></svg>
+          <span class="drop-text"><strong>Glisser le fichier trié ici</strong> ou cliquer pour le choisir</span>
+        </label>
+        <div class="alert error" id="m-src-error" hidden></div>
+        <div id="m-src-panel" hidden>
+          <div class="file-line">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8z"/><path d="M14 3v5h5M9 13h6M9 17h6"/></svg>
+            <div>
+              <div class="file-name" id="m-src-name"></div>
+              <div class="muted" id="m-src-meta"></div>
+            </div>
+          </div>
+          <div class="grid">
+            <div class="field" id="m-f-sheet-wrap" hidden>
+              <label for="m-f-sheet">Feuille</label>
+              <select id="m-f-sheet"></select>
+            </div>
+            <div class="field">
+              <label for="m-f-header">Ligne d'en-tête</label>
+              <input type="number" id="m-f-header" min="1" max="60" step="1">
+            </div>
+            <div class="field">
+              <label for="m-f-cat">Colonne catégorie</label>
+              <select id="m-f-cat"></select>
+            </div>
+          </div>
+          <div class="subhead">Catégories à garder</div>
+          <div class="checks" id="m-cats"></div>
+          <p class="muted small" id="m-cats-note"></p>
+        </div>
+      </section>
+
+      <section class="card" aria-labelledby="m-t-tpl">
+        <div class="card-head">
+          <span class="step">2</span>
+          <div>
+            <h2 id="m-t-tpl">Modèle</h2>
+            <p>Le modèle vide pour commencer une année, ou le fichier de l'année déjà rempli pour ajouter un mois.</p>
+          </div>
+        </div>
+        <label class="drop" id="m-drop-tpl" tabindex="0">
+          <input type="file" id="m-in-tpl" accept=".xlsx,.xlsm" hidden>
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></svg>
+          <span class="drop-text"><strong>Glisser le modèle ici</strong> ou cliquer pour le choisir</span>
+        </label>
+        <div class="alert error" id="m-tpl-error" hidden></div>
+        <div id="m-tpl-panel" hidden>
+          <div class="file-line">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M9 9v11M15 9v11"/></svg>
+            <div>
+              <div class="file-name" id="m-tpl-name"></div>
+              <div class="muted" id="m-tpl-meta"></div>
+            </div>
+          </div>
+          <div class="months" id="m-months" aria-label="Contenu actuel des onglets"></div>
+          <div class="grid">
+            <div class="field">
+              <label for="m-f-enseigne">Enseigne</label>
+              <input type="text" id="m-f-enseigne" placeholder="Nom de l'enseigne" spellcheck="false">
+            </div>
+            <div class="field">
+              <label for="m-f-year">Année</label>
+              <input type="number" id="m-f-year" min="2000" max="2100" step="1">
+            </div>
+            <div class="field">
+              <span class="field-label">Fichier produit</span>
+              <span class="out-name" id="m-outname"></span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card" aria-labelledby="m-t-map">
+        <div class="card-head">
+          <span class="step">3</span>
+          <div>
+            <h2 id="m-t-map">Correspondance des colonnes</h2>
+            <p>Chaque colonne du modèle reçoit une colonne du fichier trié ou une règle. Les choix sont pré-remplis et mémorisés pour chaque format de fichier.</p>
+          </div>
+        </div>
+        <p class="muted" id="m-map-empty">Chargez le fichier trié et le modèle pour régler la correspondance.</p>
+        <div id="m-map-panel" hidden>
+          <div class="field month-field">
+            <label for="m-f-month">Mois, pour choisir l'onglet</label>
+            <select id="m-f-month"></select>
+            <span class="muted small" id="m-month-note"></span>
+          </div>
+          <div class="table-wrap map-wrap"><table class="list map" id="m-map">
+            <thead><tr><th>Colonne du modèle</th><th>Source</th><th>Exemple</th></tr></thead>
+            <tbody></tbody>
+          </table></div>
+          <p class="muted small" id="m-flag-note"></p>
+          <label class="check"><input type="checkbox" id="m-f-merge" checked> Additionner les lignes d'un même produit, magasin et mois</label>
+          <p class="muted small" id="m-memo-note"></p>
+        </div>
+      </section>
+
+      <section class="card" aria-labelledby="m-t-run">
+        <div class="card-head">
+          <span class="step">4</span>
+          <div>
+            <h2 id="m-t-run">Remplir</h2>
+            <p>Les onglets des mois concernés sont remplacés. Les autres onglets restent tels quels.</p>
+          </div>
+        </div>
+        <div class="actions">
+          <button type="button" class="btn primary" id="m-btn-run" disabled>Remplir le modèle</button>
+          <span class="muted" id="m-run-hint"></span>
+        </div>
+        <div class="progress" id="m-progress" hidden>
+          <div class="bar"><span></span></div>
+          <div class="label muted"></div>
+        </div>
+        <div class="alert error" id="m-run-error" hidden></div>
+        <div id="m-result" hidden>
+          <p class="summary" id="m-summary"></p>
+          <div class="table-wrap short"><table class="list" id="m-report">
+            <thead><tr><th>Onglet</th><th>Mois</th><th class="num">Lignes écrites</th><th class="num">Lignes remplacées</th></tr></thead>
+            <tbody></tbody>
+          </table></div>
+          <div class="actions spaced">
+            <button type="button" class="btn primary" id="m-btn-dl">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v12M7 11l5 5 5-5M4 20h16"/></svg>
+              Télécharger le modèle rempli
+            </button>
+            <button type="button" class="btn" id="m-btn-next">Ajouter un autre mois à ce fichier</button>
+            <span class="muted" id="m-dl-name"></span>
+          </div>
+          <div class="subhead" id="m-preview-title"></div>
+          <div class="table-wrap"><table class="list" id="m-preview"></table></div>
+        </div>
+      </section>
+    </main>
+
+    <footer>Tout se passe dans le navigateur : aucun fichier n'est envoyé sur Internet.</footer>
+  </div>
+
+  <script src="js/xlsx-lite.js"></script>
+  <script src="js/triage.js"></script>
+  <script src="js/modele.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/app.js"></script>
+  <script src="js/app-modele.js"></script>
+  <script src="js/nav.js"></script>
+</body>
+</html>

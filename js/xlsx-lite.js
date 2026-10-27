@@ -360,13 +360,35 @@
     if (!sheets.length) throw new Error('Aucune feuille de calcul trouvée dans ce classeur.');
 
     let sst = [];
+    let stylesPath = null;
     for (const id in wbRels) {
       if (/\/sharedStrings$/.test(wbRels[id].type)) {
         const xml = await zip.text(resolvePath(wbDir, wbRels[id].target));
         if (xml) sst = parseSharedStrings(xml);
       }
+      if (/\/styles$/.test(wbRels[id].type)) stylesPath = resolvePath(wbDir, wbRels[id].target);
     }
-    return { zip, wbPath, wbXml, sheets, sst };
+    return { zip, wbPath, wbXml, sheets, sst, stylesPath };
+  }
+
+  /** Pour chaque style de cellule (index s="…"), vrai s'il a un fond coloré. */
+  async function styleFills(book) {
+    if (book._fills) return book._fills;
+    const fills = [];
+    const xml = book.stylesPath ? await book.zip.text(book.stylesPath) : null;
+    if (xml) {
+      const m = /<(?:\w+:)?cellXfs\b[^>]*>([\s\S]*?)<\/(?:\w+:)?cellXfs>/.exec(xml);
+      if (m) {
+        const re = /<(?:\w+:)?xf\b([^>]*?)\/?>/g;
+        let x;
+        while ((x = re.exec(m[1]))) {
+          const a = parseAttrs(x[1]);
+          fills.push(+(a.fillId || 0) >= 2);
+        }
+      }
+    }
+    book._fills = fills;
+    return fills;
   }
 
   async function sheetXml(book, sheet) {
@@ -703,14 +725,18 @@
     const b = sheetBounds(xml);
     const p = b.prefix;
     const styles = [];
+    const explicit = [];
+    const fills = await styleFills(book);
 
+    // Style de colonne, sauf s'il a un fond coloré : une colonne grisée dans le modèle vide
+    // ne doit pas griser les données écrites.
     const colsM = /<(?:\w+:)?cols>([\s\S]*?)<\/(?:\w+:)?cols>/.exec(xml.slice(0, b.openIdx));
     if (colsM) {
       const re = /<(?:\w+:)?col\b([^>]*?)\/?>/g;
       let c;
       while ((c = re.exec(colsM[1]))) {
         const a = parseAttrs(c[1]);
-        if (a.style == null) continue;
+        if (a.style == null || fills[+a.style]) continue;
         for (let k = +a.min; k <= Math.min(+a.max, 512); k++) styles[k] = a.style;
       }
     }
@@ -739,10 +765,21 @@
             const col = rr ? colToNum(rr[1]) : prevC + 1;
             prevC = col;
             const sm = S_ATTR.exec(c[1]);
-            if (sm) styles[col] = sm[1];
+            if (sm && !fills[+sm[1]]) { styles[col] = sm[1]; explicit[col] = sm[1]; }
           }
         }
         if (/<(?:\w+:)?(?:v|is)[\s>]/.test(inner)) replaced++;
+      }
+    }
+
+    // Colonne sans style utilisable : on reprend celui de la colonne voisine la plus proche,
+    // pour que les cellules vides gardent les mêmes bordures que le reste de la ligne.
+    const width = rows.reduce((m, row) => Math.max(m, row.length - 1), 0);
+    for (let c = 1; c <= width; c++) {
+      if (styles[c] != null) continue;
+      for (let d = 1; d <= width && styles[c] == null; d++) {
+        if (explicit[c - d] != null) styles[c] = explicit[c - d];
+        else if (explicit[c + d] != null) styles[c] = explicit[c + d];
       }
     }
 
@@ -752,9 +789,12 @@
       const r = headerRow + 1 + i;
       const row = rows[i];
       let cells = '';
-      for (let c = 1; c < row.length; c++) {
+      for (let c = 1; c <= width; c++) {
         const v = row[c];
-        if (v == null || v === '') continue;
+        if (v == null || v === '') {
+          if (styles[c] != null) cells += '<' + p + 'c r="' + numToCol(c) + r + '" s="' + styles[c] + '"/>';
+          continue;
+        }
         const ref = numToCol(c) + r;
         if (typeof v === 'number') {
           if (!Number.isFinite(v)) continue;
@@ -778,6 +818,7 @@
   }
 
   /** Reconstruit le classeur avec des parties remplacées : Map chemin → texte XML. */
+  // (les styles sont mis en cache dans book._fills par styleFills)
   async function writeWorkbook(book, parts) {
     const repl = new Map();
     for (const [path, content] of parts) {

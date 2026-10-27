@@ -357,7 +357,6 @@ table.map .src-cell { width: 55%; min-width: 260px; }
 .src-wrap { display: flex; gap: 8px; }
 .src-wrap select { flex: 1 1 auto; min-width: 0; }
 table.map .example { color: var(--muted); max-width: 260px; overflow: hidden; text-overflow: ellipsis; }
-table.map tr.manual td { background: var(--surface-2); }
 table.map .manual-note { display: inline-flex; align-items: center; min-height: 36px; color: var(--muted); font-style: italic; }
 .check { display: inline-flex; align-items: center; gap: 8px; margin-top: 12px; cursor: pointer; }
 .check input { accent-color: var(--accent); width: 16px; height: 16px; margin: 0; }

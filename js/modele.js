@@ -247,7 +247,7 @@
    *   {type:'empty'} | {type:'fixed', value} | {type:'category'} | {type:'col', col}
    *   {type:'flag', col}       O si la valeur est PROMO, O, Oui ou un nombre positif, sinon N
    *   {type:'monthly', offset} n-ième colonne du mois, pour les fichiers à un mois par colonne
-   *   {type:'ifpromo'}         montant de vente si la ligne est en promo, sinon 0
+   * La colonne promo (O/N) du modèle n'est jamais remplie : elle est saisie à la main dans Excel.
    */
   function suggestMapping(tplCols, src) {
     const map = {};
@@ -263,7 +263,6 @@
       return null;
     };
 
-    const roles = tplCols.map((t) => t.role);
     for (const t of tplCols) {
       let spec = { type: 'empty' };
       switch (t.role) {
@@ -284,11 +283,11 @@
           break;
         }
         case 'promo':
-          // Laissée vide par défaut, à la demande de l'utilisateur : à choisir à la main si besoin.
+          // Toujours laissée vide : l'utilisateur la saisit à la main dans Excel.
           break;
         case 'promoVendue': {
           const c = findByPatterns(src.cols, ROLE_PATTERNS.promoVendue, used);
-          spec = c ? { type: 'col', col: c } : null;
+          if (c) spec = { type: 'col', col: c };
           break;
         }
         default:
@@ -299,25 +298,7 @@
       }
       map[t.col] = spec;
     }
-    // Sans colonne dédiée, promo vendue lit la même colonne que montant_vente :
-    // le montant n'est alors compté que sur les lignes en promo.
-    const montantT = tplCols.find((t) => t.role === 'montant');
-    const promoT = tplCols.find((t) => t.role === 'promo');
-    const promoMapped = !!(promoT && map[promoT.col] && map[promoT.col].type !== 'empty');
-    for (const t of tplCols) {
-      if (t.role !== 'promoVendue' || map[t.col]) continue;
-      const ms = montantT ? map[montantT.col] : null;
-      map[t.col] = ms && ms.type !== 'empty' && promoMapped ? Object.assign({}, ms) : { type: 'empty' };
-    }
     return map;
-  }
-
-  /** Deux règles lisent-elles la même colonne ? */
-  function sameSource(a, b) {
-    if (!a || !b || a.type !== b.type) return false;
-    if (a.type === 'col' || a.type === 'flag') return a.col === b.col;
-    if (a.type === 'monthly') return a.offset === b.offset;
-    return false;
   }
 
   function suggestMonth(src) {
@@ -397,16 +378,7 @@
         else if (typeof v === 'string') v = v.trim();
         out[t.col] = v === '' ? null : v;
       }
-      const montantSpec = roleCol.montant ? cfg.mapping[roleCol.montant] : null;
-      for (const t of tpl) {
-        const sp = cfg.mapping[t.col];
-        if (t.role !== 'promoVendue' || !sp) continue;
-        if (sp.type === 'ifpromo' || sameSource(sp, montantSpec)) {
-          const promo = roleCol.promo ? toFlag(out[roleCol.promo]) : 'N';
-          const montant = roleCol.montant ? out[roleCol.montant] : null;
-          out[t.col] = promo === 'O' ? (montant || 0) : 0;
-        }
-      }
+      if (roleCol.promo) out[roleCol.promo] = null;
       return out;
     };
 
@@ -537,7 +509,6 @@
     categoryCounts,
     suggestMapping,
     suggestMonth,
-    sameSource,
     buildOutput,
     flagPreview,
     sheetForMonth,

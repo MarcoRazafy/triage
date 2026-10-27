@@ -93,10 +93,9 @@
    * et la lecture mois par mois pour les fichiers à un mois par colonne sont automatiques.
    */
   function valueToSpec(value, t) {
-    if (!value) return { type: 'empty' };
+    if (!value || t.role === 'promo') return { type: 'empty' };
     const col = +String(value).split(':')[1];
     const info = st.src.info;
-    if (t.role === 'promo') return { type: 'flag', col };
     if (st.month && st.month.type === 'wide' && info.wide) {
       for (const g of info.wide.groups) {
         const i = g.cols.indexOf(col);
@@ -132,7 +131,7 @@
     if (sp.type === 'col' || sp.type === 'flag') return sp.col >= 1 && sp.col <= info.cols.length;
     if (sp.type === 'monthly') return !!info.wide && sp.offset < info.wide.offsets.length;
     if (sp.type === 'category') return !!info.catCol;
-    return sp.type === 'empty' || sp.type === 'ifpromo';
+    return sp.type === 'empty';
   }
 
   function monthValid(ms, info) {
@@ -277,14 +276,9 @@
     const memo = memoGet(info.signature);
     if (memo) {
       for (const t of tplCols) {
+        if (t.role === 'promo') continue;
         const sp = memo.mapping && memo.mapping[T.fold(t.header)];
         if (specValid(sp, info)) mapping[t.col] = Object.assign({}, sp);
-      }
-      const montantT = tplCols.find((t) => t.role === 'montant');
-      for (const t of tplCols) {
-        if (mapping[t.col] && mapping[t.col].type === 'ifpromo') {
-          mapping[t.col] = montantT ? Object.assign({}, mapping[montantT.col]) : { type: 'empty' };
-        }
       }
       const ms = memo.month === 'file'
         ? (info.fileMonth ? { type: 'fixed', month: info.fileMonth, fromFile: true } : null)
@@ -354,6 +348,7 @@
   function updateExamples() {
     const row = previewRow();
     for (const t of st.tpl.info.tplCols) {
+      if (t.role === 'promo') continue;
       const td = el.mapBody.querySelector('td[data-col="' + t.col + '"]');
       if (td) td.textContent = exampleText(row, t);
     }
@@ -479,6 +474,13 @@
 
     const row = previewRow();
     el.mapBody.replaceChildren(...st.tpl.info.tplCols.map((t) => {
+      if (t.role === 'promo') {
+        st.mapping[t.col] = { type: 'empty' };
+        return h('tr', { class: 'manual' },
+          h('td', { class: 'tpl-col' }, t.header),
+          h('td', { class: 'src-cell' }, h('span', { class: 'manual-note' }, 'Laissée vide : à saisir à la main dans Excel')),
+          h('td', { class: 'example', 'data-col': String(t.col) }, '—'));
+      }
       const select = h('select', {
         'aria-label': 'Colonne pour ' + t.header,
         onchange: (e) => { st.mapping[t.col] = valueToSpec(e.target.value, t); onMappingChanged(); },
@@ -490,18 +492,6 @@
     }));
 
     const notes = [];
-    const tplCols = st.tpl.info.tplCols;
-    const promoT = tplCols.find((t) => t.role === 'promo');
-    const psp = promoT && st.mapping[promoT.col];
-    if (psp && psp.type === 'flag') {
-      const fp = M.flagPreview(st.src.rows, info.headerRow, psp.col, 8);
-      notes.push(promoT.header + ' : ' + [...fp].map(([k, v]) => k + ' donne ' + v).join(', ') + '.');
-    }
-    const montantT = tplCols.find((t) => t.role === 'montant');
-    const pvT = tplCols.find((t) => t.role === 'promoVendue');
-    if (montantT && pvT && M.sameSource(st.mapping[pvT.col], st.mapping[montantT.col])) {
-      notes.push(pvT.header + ' lit la même colonne que ' + montantT.header + ' : le montant est compté seulement sur les lignes en promo.');
-    }
     if (st.month && st.month.type === 'wide' && info.wide) {
       notes.push('Un mois par colonne : la colonne choisie pour ' + M.MONTH_LABELS[info.wide.groups[0].month - 1].toLowerCase() + ' est lue au même endroit pour chaque mois.');
     }
